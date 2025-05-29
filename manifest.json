@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Name Saver",
+  "version": "1.1",
+  "permissions": [
+    "scripting",
+    "identity",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/in/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets"
+    ]
+  },
+  "commands": {
+    "save-name": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+D"
+      },
+      "description": "Extract LinkedIn name and save to Google Sheet"
+    }
+  }
+}

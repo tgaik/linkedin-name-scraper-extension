@@ -1,0 +1,10 @@
+Right-click your project folder and select “Git Bash Here”.
+
+Run the script in Git Bash:
+./setup_git_repo.sh
+
+
+
+If it says permission denied, run:
+chmod +x setup_git_repo.sh
+./setup_git_repo.sh
