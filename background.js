@@ -1,6 +1,6 @@
 const CONFIG = {
-  SHEET_ID: "YOUR_GOOGLE_SHEET_ID",
-  CLIENT_ID: "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com"
+  SHEET_ID: "YOUR_SHEET_ID_HERE",
+  CLIENT_ID: "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com"
 };
 
 function showPopup(tabId, message) {
@@ -53,26 +53,26 @@ chrome.commands.onCommand.addListener(async (command) => {
     return;
   }
 
+  // Extract full name and LinkedIn profile URL from the active tab
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: () => {
       const h1 = document.querySelector('h1.yOxMigNgsHeyCrMheswcnurvlbsCZiTQtc.inline.t-24.v-align-middle.break-words') || document.querySelector('h1');
-      return {
-        fullName: h1 ? h1.innerText.trim() : null,
-        profileUrl: window.location.href
-      };
+      const name = h1 ? h1.innerText.trim() : null;
+      const profileUrl = window.location.href;
+      return { name, profileUrl };
     }
   }, async (results) => {
     const data = results?.[0]?.result;
-    if (!data || !data.fullName) {
+    if (!data?.name) {
       showPopup(tab.id, '⚠️ No name found on this LinkedIn page.');
       return;
     }
 
-    const nameParts = data.fullName.split(' ').filter(Boolean);
+    const nameParts = data.name.split(' ').filter(Boolean);
     const firstName = nameParts[0] || '';
     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
-    const profileUrl = data.profileUrl || '';
+    const profileUrl = data.profileUrl;
 
     let token;
     try {
@@ -92,55 +92,24 @@ chrome.commands.onCommand.addListener(async (command) => {
     }
 
     try {
-      // Find last used row
-      const sheetResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/Sheet1!A:D`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-
-      if (!sheetResponse.ok) {
-        const errorText = await sheetResponse.text();
-        console.error("Google Sheets read error:", errorText);
-        showPopup(tab.id, '❌ Failed to read sheet data.');
-        return;
-      }
-
-      const sheetData = await sheetResponse.json();
-      const rows = sheetData.values || [];
-
-      // Find last non-empty row index to append after
-      let lastRowIndex = 1; // Start from 1 (assuming row 1 is headers or titles)
-      for (let i = rows.length - 1; i >= 0; i--) {
-        if (rows[i].some(cell => cell.trim() !== '')) {
-          lastRowIndex = i + 1; // +1 because sheet rows are 1-indexed
-          break;
-        }
-      }
-
-      const appendRange = `Sheet1!A${lastRowIndex + 1}:D${lastRowIndex + 1}`;
-
-      const appendResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${appendRange}:append?valueInputOption=USER_ENTERED`,
+      const response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/Sheet1!A1:append?valueInputOption=USER_ENTERED`,
         {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ values: [[firstName, lastName, '', profileUrl]] })
+          body: JSON.stringify({ values: [[firstName, lastName, profileUrl]] })
         }
       );
 
-      if (appendResponse.ok) {
+      if (response.ok) {
         showPopup(tab.id, `✅ Saved: ${firstName} ${lastName}`);
       } else {
-        const errorText = await appendResponse.text();
-        console.error("Google Sheets append error:", errorText);
-        showPopup(tab.id, '❌ Failed to save to Sheet.');
+        const errorText = await response.text();
+        console.error("Google Sheets error:", errorText);
+        showPopup(tab.id, `❌ Failed to save to Sheet.`);
       }
     } catch (err) {
       console.error("Network error:", err);
